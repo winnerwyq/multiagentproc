@@ -34,7 +34,7 @@ def generate(prompt_zh: str):
     )
     if task.status_code != 200:
         raise RuntimeError(f"DashScope 图像生成失败：{task.status_code} {task.message}")
-    b64 = task.output.results[0].b64_image   # ✅ 字段名修正
+    b64 = task.output.results[0].b64   # ✅ 最终字段名
     return f"![generated](data:image/png;base64,{b64})", en_prompt
 
 # ---------- 3. UI ----------
