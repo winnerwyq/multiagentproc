@@ -1,0 +1,28 @@
+version: 1
+agents:
+  - id: prompt_agent
+    name: PromptDesigner
+    model:
+      provider: openai
+      model: qwen-max
+      api_key: ${DASHSCOPE_API_KEY}
+      base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    instructions: >
+      你是资深平面设计师，请把用户中文需求精简成 1 句英文 Stable Diffusion 提示词，
+      风格关键词用逗号分隔，不要解释，只输出提示词本身。
+
+  - id: image_agent
+    name: ImageGenerator
+    model:
+      provider: openai
+      model: hailuo-image
+      api_key: ${MINIMAX_API_KEY}
+      base_url: https://api.minimax.chat/v1
+      default_headers:
+        Group-Id: ${MINIMAX_GROUP_ID}
+    instructions: >
+      收到英文提示词后，立即调用图像生成接口，返回 Markdown 格式图片。
+
+flow:
+  - prompt_agent
+  - image_agent
