@@ -2,7 +2,7 @@
 import streamlit as st
 import openai
 import base64
-from minimax import MiniMax
+from minimax import MiniMaxClient
 
 # ---------- 1. 读取 secrets ----------
 secrets = st.secrets
@@ -15,7 +15,7 @@ qwen = openai.OpenAI(api_key=DASH_KEY,
                      base_url="https://dashscope.aliyuncs.com/compatible-mode/v1")
 
 # ---------- 3. 海螺官方 SDK 客户端 ----------
-mini = MiniMax(api_key=MINI_KEY, group_id=GROUP_ID)
+mini = MiniMaxClient(api_key=MINI_KEY, group_id=GROUP_ID)
 
 def hailuo_image(prompt: str) -> str:
     """MiniMax 官方 SDK，自动签名 & 重试"""
