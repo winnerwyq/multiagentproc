@@ -44,4 +44,11 @@ idea = st.text_area("用中文描述想要的画面", height=80)
 go = st.button("生成", type="primary")
 
 if go:
-    if not
+    if not idea.strip():
+        st.warning("请输入描述"); st.stop()
+    with st.spinner("生成中…"):
+        md, en = generate(idea)
+    st.markdown(md, unsafe_allow_html=True)
+    b64 = md.split("base64,")[1].split(")")[0]
+    st.download_button("📥 下载图片", data=base64.b64decode(b64),
+                       file_name="generated.png", mime="image/png")
