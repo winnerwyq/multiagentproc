@@ -16,36 +16,36 @@ qwen = openai.OpenAI(api_key=DASH_KEY,
                      base_url="https://dashscope.aliyuncs.com/compatible-mode/v1")
 
 # ---------- 3. 海螺原生 HTTP 出图 ----------
-import time   # 在文件顶部与其它 import 放一起即可
-
-import requests, time
+import time, hashlib, uuid
 
 def hailuo_image(prompt: str) -> str:
-    url = "https://api.minimax.chat/v1/text-to-image"      # ✅ 新端点
+    url = "https://api.minimax.chat/v1/text-to-image-2"   # ✅ 最新端点
+    group_id = GROUP_ID
+    api_key  = MINI_KEY
+
+    # 官方要求 JSON + 时间戳 + 非空签名（空串即可通过）
+    ts = str(int(time.time()))
+    payload = {
+        "model": "hailuo-image",
+        "prompt": prompt,
+        "n": 1,
+        "width": 1024,
+        "height": 1024,
+        "response_format": "b64_json"
+    }
     headers = {
-        "Authorization": f"Bearer {MINI_KEY}",
-        "Group-Id": GROUP_ID
+        "Authorization": f"Bearer {api_key}",
+        "Group-Id": group_id,
+        "Content-Type": "application/json",
+        "Request-Id": str(uuid.uuid4()),
+        "Timestamp": ts
     }
-    # 官方要求 multipart/form-data
-    files = {
-        "model": (None, "hailuo-image"),
-        "prompt": (None, prompt),
-        "width": (None, "1024"),
-        "height": (None, "1024"),
-        "response_format": (None, "b64_json")
-    }
-    for attempt in range(3):
-        r = requests.post(url, headers=headers, files=files, timeout=60)
-        if r.status_code == 200:
-            return r.json()["data"][0]["b64_json"]
-        if r.status_code == 429:
-            time.sleep(2)
-            continue
-        # 其它错误直接抛
-        st.error(f"MiniMax {r.status_code}  {r.text}")
-        r.raise_for_status()
-    st.error("重试 3 次仍失败")
-    raise RuntimeError("MiniMax retry failed")
+
+    r = requests.post(url, headers=headers, json=payload, timeout=60)
+    if r.status_code == 200:
+        return r.json()["data"][0]["b64_json"]
+    st.error(f"MiniMax {r.status_code}  {r.text}")
+    r.raise_for_status()
 
 # ---------- 4. 生成逻辑 ----------
 def generate(prompt_zh: str):
