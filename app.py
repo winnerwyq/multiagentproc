@@ -33,20 +33,20 @@ def generate(prompt_zh: str):
             format="base64"
         )
 
+        # 打印完整的响应，查看是否有其他字段或错误信息
+        print("DashScope Response:", task.output)
+        print("DashScope Status:", task.status_code, task.message)
+
         # 检查 API 请求状态
         if task.status_code != 200:
             raise RuntimeError(f"DashScope 图像生成失败：{task.status_code} {task.message}")
 
-        # 打印调试信息，查看返回的数据结构
-        print("DashScope Response:", task.output)
-
         # 检查结果是否包含 'b64' 字段
         if 'results' in task.output and len(task.output.results) > 0:
             result = task.output.results[0]
-            
-            # 检查是否有 b64 或 image_url 字段
             if 'b64' in result:
                 b64 = result['b64']
+                return f"![generated](data:image/png;base64,{b64})", en_prompt
             elif 'image_url' in result:
                 image_url = result['image_url']
                 return f"![generated]({image_url})", en_prompt
@@ -54,8 +54,6 @@ def generate(prompt_zh: str):
                 raise KeyError("结果中缺少 'b64' 或 'image_url' 字段")
         else:
             raise RuntimeError("没有找到生成的图片结果")
-
-        return f"![generated](data:image/png;base64,{b64})", en_prompt
 
     except KeyError as e:
         st.error(f"错误：{str(e)}")
@@ -93,3 +91,4 @@ if go:
         b64 = md.split("base64,")[1].split(")")[0]
         st.download_button("📥 下载图片", data=base64.b64decode(b64),
                            file_name="generated.png", mime="image/png")
+
