@@ -29,12 +29,12 @@ def generate(prompt_zh: str):
         model="wanx-v1",
         prompt=en_prompt,
         n=1,
-        size="1024*1024",   # 星号
+        size="1024*1024",
         format="base64"
     )
     if task.status_code != 200:
         raise RuntimeError(f"DashScope 图像生成失败：{task.status_code} {task.message}")
-    b64 = task.output.results[0].base64_data
+    b64 = task.output.results[0].b64_image   # ✅ 字段名修正
     return f"![generated](data:image/png;base64,{b64})", en_prompt
 
 # ---------- 3. UI ----------
