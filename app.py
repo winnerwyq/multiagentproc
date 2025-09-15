@@ -43,10 +43,15 @@ def generate(prompt_zh: str):
         # 检查结果是否包含 'b64' 字段
         if 'results' in task.output and len(task.output.results) > 0:
             result = task.output.results[0]
+            
+            # 检查是否有 b64 或 image_url 字段
             if 'b64' in result:
                 b64 = result['b64']
+            elif 'image_url' in result:
+                image_url = result['image_url']
+                return f"![generated]({image_url})", en_prompt
             else:
-                raise KeyError("结果中缺少 'b64' 字段")
+                raise KeyError("结果中缺少 'b64' 或 'image_url' 字段")
         else:
             raise RuntimeError("没有找到生成的图片结果")
 
@@ -57,6 +62,7 @@ def generate(prompt_zh: str):
         return None, None
     except RuntimeError as e:
         st.error(f"请求错误：{str(e)}")
+        st.warning("请检查输入的描述是否适合生成图像，或稍后重试。")
         return None, None
     except Exception as e:
         st.error(f"发生了未知错误：{str(e)}")
@@ -83,7 +89,9 @@ if go:
     st.markdown(md, unsafe_allow_html=True)
     
     # 提取 base64 图像并提供下载按钮
-    b64 = md.split("base64,")[1].split(")")[0]
-    st.download_button("📥 下载图片", data=base64.b64decode(b64),
-                       file_name="generated.png", mime="image/png")
+    if "base64," in md:
+        b64 = md.split("base64,")[1].split(")")[0]
+        st.download_button("📥 下载图片", data=base64.b64decode(b64),
+                           file_name="generated.png", mime="image/png")
+
 
