@@ -1,9 +1,8 @@
 # app.py
 import streamlit as st
 import openai
-import requests
 import base64
-import os
+from minimax import MiniMax
 
 # ---------- 1. 读取 secrets ----------
 secrets = st.secrets
@@ -15,37 +14,20 @@ GROUP_ID = secrets["MINIMAX_GROUP_ID"]
 qwen = openai.OpenAI(api_key=DASH_KEY,
                      base_url="https://dashscope.aliyuncs.com/compatible-mode/v1")
 
-# ---------- 3. 海螺原生 HTTP 出图 ----------
-import time, hashlib, uuid
+# ---------- 3. 海螺官方 SDK 客户端 ----------
+mini = MiniMax(api_key=MINI_KEY, group_id=GROUP_ID)
 
 def hailuo_image(prompt: str) -> str:
-    url = "https://api.minimax.chat/v1/text-to-image-2"   # ✅ 最新端点
-    group_id = GROUP_ID
-    api_key  = MINI_KEY
+    """MiniMax 官方 SDK，自动签名 & 重试"""
+    result = mini.text_to_image(
+        model="hailuo-image",
+        prompt=prompt,
+        width=1024,
+        height=1024,
+        response_format="b64"
+    )
+    return result["data"][0]["b64"]
 
-    # 官方要求 JSON + 时间戳 + 非空签名（空串即可通过）
-    ts = str(int(time.time()))
-    payload = {
-        "model": "hailuo-image",
-        "prompt": prompt,
-        "n": 1,
-        "width": 1024,
-        "height": 1024,
-        "response_format": "b64_json"
-    }
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Group-Id": group_id,
-        "Content-Type": "application/json",
-        "Request-Id": str(uuid.uuid4()),
-        "Timestamp": ts
-    }
-
-    r = requests.post(url, headers=headers, json=payload, timeout=60)
-    if r.status_code == 200:
-        return r.json()["data"][0]["b64_json"]
-    st.error(f"MiniMax {r.status_code}  {r.text}")
-    r.raise_for_status()
 
 # ---------- 4. 生成逻辑 ----------
 def generate(prompt_zh: str):
@@ -62,6 +44,7 @@ def generate(prompt_zh: str):
     # 海螺 → 出图
     b64 = hailuo_image(en_prompt)
     return f"![generated](data:image/png;base64,{b64})", en_prompt
+
 
 # ---------- 5. UI ----------
 st.set_page_config(page_title="千问×海螺作画", page_icon="🎨")
