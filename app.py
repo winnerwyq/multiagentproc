@@ -1,21 +1,40 @@
 # app.py
-import streamlit as st, os, base64, requests, json
+import streamlit as st
 import openai
+import requests
+import base64
+import os
 
-# ---------- 1. 密钥 ----------
+# ---------- 1. 读取 secrets ----------
 secrets = st.secrets
 DASH_KEY = secrets["DASHSCOPE_API_KEY"]
 MINI_KEY = secrets["MINIMAX_API_KEY"]
 GROUP_ID = secrets["MINIMAX_GROUP_ID"]
 
-# ---------- 2. 客户端 ----------
+# ---------- 2. 千问客户端 ----------
 qwen = openai.OpenAI(api_key=DASH_KEY,
                      base_url="https://dashscope.aliyuncs.com/compatible-mode/v1")
-mini = openai.OpenAI(api_key=MINI_KEY,
-                     base_url="https://api.minimax.chat/v1",
-                     default_headers={"Group-Id": GROUP_ID})
 
-# ---------- 3. 逻辑 ----------
+# ---------- 3. 海螺原生 HTTP 出图 ----------
+def hailuo_image(prompt: str) -> str:
+    url = "https://api.minimax.chat/v1/images/generations"
+    headers = {
+        "Authorization": f"Bearer {MINI_KEY}",
+        "Group-Id": GROUP_ID,
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "hailuo-image",
+        "prompt": prompt,
+        "n": 1,
+        "size": "1024x1024",
+        "response_format": "b64_json"
+    }
+    r = requests.post(url, headers=headers, json=payload, timeout=60)
+    r.raise_for_status()
+    return r.json()["data"][0]["b64_json"]
+
+# ---------- 4. 生成逻辑 ----------
 def generate(prompt_zh: str):
     # 千问 → 英文提示词
     resp = qwen.chat.completions.create(
@@ -27,18 +46,11 @@ def generate(prompt_zh: str):
     )
     en_prompt = resp.choices[0].message.content.strip()
 
-    # 海螺 → 文生图
-    r = mini.images.generate(
-        model="hailuo-image",
-        prompt=en_prompt,
-        n=1,
-        size="1024x1024",
-        response_format="b64_json"
-    )
-    b64 = r.data[0].b64_json
+    # 海螺 → 出图
+    b64 = hailuo_image(en_prompt)
     return f"![generated](data:image/png;base64,{b64})", en_prompt
 
-# ---------- 4. UI ----------
+# ---------- 5. UI ----------
 st.set_page_config(page_title="千问×海螺作画", page_icon="🎨")
 st.title("千问×海螺 · 一句话出图")
 idea = st.text_area("用中文描述想要的画面", height=80)
