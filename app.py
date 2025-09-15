@@ -19,12 +19,14 @@ qwen = openai.OpenAI(api_key=DASH_KEY,
                      base_url="https://dashscope.aliyuncs.com/compatible-mode/v1")
 
 # ---------- 3. 海螺原生 HTTP 文生图（带签名，2025-09 实测可用） ----------
-def hailuo_image(prompt: str) -> str:
-    url = "https://api.minimax.chat/v1/text-to-image-2"
-    ts = str(int(time.time()))
-    req_id = str(uuid.uuid4())
+import hashlib, uuid, time, requests
 
-    payload = {
+def hailuo_image(prompt: str) -> str:
+    url = "https://api.minimax.chat/v1/images/generations"   # ✅ 最新
+    ts  = str(int(time.time()))
+    rid = str(uuid.uuid4())
+
+    body = {
         "model": "hailuo-image",
         "prompt": prompt,
         "n": 1,
@@ -33,21 +35,21 @@ def hailuo_image(prompt: str) -> str:
         "response_format": "b64_json"
     }
 
-    # 签名 = HMAC-SHA256(api_key, ts+req_id+group_id+model+prompt)
-    sign_str = f"{ts}{req_id}{GROUP_ID}hailuo-image{prompt}"
+    # 签名 = HMAC-SHA256(key, ts+rid+group_id+model+prompt)
+    sign_str = f"{ts}{rid}{GROUP_ID}hailuo-image{prompt}"
     signature = hashlib.sha256((MINI_KEY + sign_str).encode()).hexdigest()
 
     headers = {
         "Authorization": f"Bearer {MINI_KEY}",
         "Group-Id": GROUP_ID,
-        "Request-Id": req_id,
+        "Request-Id": rid,
         "Timestamp": ts,
         "Signature": signature,
         "Content-Type": "application/json"
     }
 
     for attempt in range(3):
-        r = requests.post(url, headers=headers, json=payload, timeout=60)
+        r = requests.post(url, headers=headers, json=body, timeout=60)
         if r.status_code == 200:
             return r.json()["data"][0]["b64_json"]
         if r.status_code == 429:
