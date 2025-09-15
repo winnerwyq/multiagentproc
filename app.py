@@ -18,22 +18,24 @@ qwen = openai.OpenAI(api_key=DASH_KEY,
 # ---------- 3. 海螺原生 HTTP 出图 ----------
 import time   # 在文件顶部与其它 import 放一起即可
 
+import requests, time
+
 def hailuo_image(prompt: str) -> str:
-    url = "https://api.minimax.chat/v1/images/generations"
+    url = "https://api.minimax.chat/v1/text-to-image"      # ✅ 新端点
     headers = {
         "Authorization": f"Bearer {MINI_KEY}",
-        "Group-Id": GROUP_ID,
-        "Content-Type": "application/json"
+        "Group-Id": GROUP_ID
     }
-    payload = {
-        "model": "hailuo-image",   # 若控制台是 hailuo-image-v1 请改这里
-        "prompt": prompt,
-        "n": 1,
-        "size": "1024x1024",
-        "response_format": "b64_json"
+    # 官方要求 multipart/form-data
+    files = {
+        "model": (None, "hailuo-image"),
+        "prompt": (None, prompt),
+        "width": (None, "1024"),
+        "height": (None, "1024"),
+        "response_format": (None, "b64_json")
     }
     for attempt in range(3):
-        r = requests.post(url, headers=headers, json=payload, timeout=60)
+        r = requests.post(url, headers=headers, files=files, timeout=60)
         if r.status_code == 200:
             return r.json()["data"][0]["b64_json"]
         if r.status_code == 429:
