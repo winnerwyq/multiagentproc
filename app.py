@@ -18,12 +18,10 @@ GROUP_ID = secrets["MINIMAX_GROUP_ID"]
 qwen = openai.OpenAI(api_key=DASH_KEY,
                      base_url="https://dashscope.aliyuncs.com/compatible-mode/v1")
 
-# ---------- 3. 海螺原生 HTTP 文生图（带签名，2025-09 实测可用） ----------
-import hashlib, uuid, time, requests
-
+# ---------- 3. 海螺原生 HTTP（带签名，2025-09-15 验证可用） ----------
 def hailuo_image(prompt: str) -> str:
-    url = "https://api.minimax.chat/v1/images/generations"   # ✅ 最新
-    ts  = str(int(time.time()))
+    url = "https://api.minimax.chat/v1/images/generations"
+    ts = str(int(time.time()))
     rid = str(uuid.uuid4())
 
     body = {
