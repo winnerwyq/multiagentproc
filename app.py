@@ -93,5 +93,3 @@ if go:
         b64 = md.split("base64,")[1].split(")")[0]
         st.download_button("📥 下载图片", data=base64.b64decode(b64),
                            file_name="generated.png", mime="image/png")
-
-
