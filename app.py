@@ -4,15 +4,15 @@ import base64
 import dashscope
 
 # ---------- 1. 读取 secrets ----------
-secrets = st.secrets
-DASH_KEY = secrets["DASHSCOPE_API_KEY"]   # 阿里百炼
+# 从 Streamlit secrets 配置中读取 API 密钥
+dashscope.api_key = st.secrets["DASHSCOPE_API_KEY"]   # 设置 DashScope API 密钥
 
 # ---------- 2. 生成逻辑 ----------
 def generate(prompt_zh: str):
     try:
         # ① 千问把中文需求翻译成英文提示词
         qwen = openai.OpenAI(
-            api_key=DASH_KEY,
+            api_key=dashscope.api_key,
             base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
         )
         resp = qwen.chat.completions.create(
@@ -91,4 +91,5 @@ if go:
         b64 = md.split("base64,")[1].split(")")[0]
         st.download_button("📥 下载图片", data=base64.b64decode(b64),
                            file_name="generated.png", mime="image/png")
+
 
