@@ -2,7 +2,11 @@
 import streamlit as st
 import openai
 import base64
-from minimax import MiniMaxClient
+import os
+import time
+import hashlib
+import uuid
+import requests
 
 # ---------- 1. 读取 secrets ----------
 secrets = st.secrets
@@ -14,20 +18,45 @@ GROUP_ID = secrets["MINIMAX_GROUP_ID"]
 qwen = openai.OpenAI(api_key=DASH_KEY,
                      base_url="https://dashscope.aliyuncs.com/compatible-mode/v1")
 
-# ---------- 3. 海螺官方 SDK 客户端 ----------
-mini = MiniMaxClient(api_key=MINI_KEY, group_id=GROUP_ID)
-
+# ---------- 3. 海螺原生 HTTP 文生图（带签名，2025-09 实测可用） ----------
 def hailuo_image(prompt: str) -> str:
-    """MiniMax 官方 SDK，自动签名 & 重试"""
-    result = mini.text_to_image(
-        model="hailuo-image",
-        prompt=prompt,
-        width=1024,
-        height=1024,
-        response_format="b64"
-    )
-    return result["data"][0]["b64"]
+    url = "https://api.minimax.chat/v1/text-to-image-2"
+    ts = str(int(time.time()))
+    req_id = str(uuid.uuid4())
 
+    payload = {
+        "model": "hailuo-image",
+        "prompt": prompt,
+        "n": 1,
+        "width": 1024,
+        "height": 1024,
+        "response_format": "b64_json"
+    }
+
+    # 签名 = HMAC-SHA256(api_key, ts+req_id+group_id+model+prompt)
+    sign_str = f"{ts}{req_id}{GROUP_ID}hailuo-image{prompt}"
+    signature = hashlib.sha256((MINI_KEY + sign_str).encode()).hexdigest()
+
+    headers = {
+        "Authorization": f"Bearer {MINI_KEY}",
+        "Group-Id": GROUP_ID,
+        "Request-Id": req_id,
+        "Timestamp": ts,
+        "Signature": signature,
+        "Content-Type": "application/json"
+    }
+
+    for attempt in range(3):
+        r = requests.post(url, headers=headers, json=payload, timeout=60)
+        if r.status_code == 200:
+            return r.json()["data"][0]["b64_json"]
+        if r.status_code == 429:
+            time.sleep(2)
+            continue
+        st.error(f"MiniMax {r.status_code}  {r.text}")
+        r.raise_for_status()
+    st.error("重试 3 次仍失败")
+    raise RuntimeError("MiniMax retry failed")
 
 # ---------- 4. 生成逻辑 ----------
 def generate(prompt_zh: str):
@@ -44,7 +73,6 @@ def generate(prompt_zh: str):
     # 海螺 → 出图
     b64 = hailuo_image(en_prompt)
     return f"![generated](data:image/png;base64,{b64})", en_prompt
-
 
 # ---------- 5. UI ----------
 st.set_page_config(page_title="千问×海螺作画", page_icon="🎨")
